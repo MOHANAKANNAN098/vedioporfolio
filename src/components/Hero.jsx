@@ -1,14 +1,12 @@
 import React, { useRef, useEffect, useState } from 'react';
 import AOS from 'aos';
 import 'aos/dist/aos.css';
-// Adjusted import path for the video
 import heroVideo from '../assets/hero video/1000086985 (1).mp4';
 
 const Hero = () => {
   const videoRef = useRef(null);
   const sectionRef = useRef(null);
-  const [shouldPlay, setShouldPlay] = useState(false);
-  const [isReady, setIsReady] = useState(false);
+  const [isPlaying, setIsPlaying] = useState(false);
 
   useEffect(() => {
     AOS.init({
@@ -18,84 +16,103 @@ const Hero = () => {
     });
   }, []);
 
-  // Handle video ready state
+  // Aggressive autoplay for all devices
   useEffect(() => {
-    const video = videoRef.current;
-    if (!video) return;
+    const startVideoPlayback = () => {
+      if (!videoRef.current) return;
 
-    const handleCanPlay = () => {
-      setIsReady(true);
+      videoRef.current.muted = true;
+      videoRef.current.volume = 0;
+
+      const playAttempt = () => {
+        videoRef.current.play().then(() => {
+          setIsPlaying(true);
+          // Unmute after 500ms of successful playback
+          setTimeout(() => {
+            if (videoRef.current) {
+              videoRef.current.muted = false;
+              videoRef.current.volume = 1;
+            }
+          }, 500);
+        }).catch(() => {
+          console.log('Initial play failed, will retry...');
+          setTimeout(playAttempt, 500);
+        });
+      };
+
+      playAttempt();
     };
 
-    video.addEventListener('canplay', handleCanPlay);
-    return () => video.removeEventListener('canplay', handleCanPlay);
+    // Delay to allow preloader to finish
+    const preloaderTimer = setTimeout(() => {
+      startVideoPlayback();
+    }, 2200);
+
+    return () => clearTimeout(preloaderTimer);
   }, []);
 
-  // Start video after preloader finishes
+  // Handle visibility changes
   useEffect(() => {
-    const timer = setTimeout(() => {
-      if (videoRef.current && isReady) {
-        videoRef.current.currentTime = 0;
-        videoRef.current.muted = true;
-        
-        const playPromise = videoRef.current.play();
-        if (playPromise !== undefined) {
-          playPromise.then(() => {
-            setShouldPlay(true);
-            // Unmute after video starts playing
-            setTimeout(() => {
-              if (videoRef.current) {
-                videoRef.current.muted = false;
-              }
-            }, 200);
-          }).catch(error => {
-            console.log('Autoplay failed:', error);
-            setShouldPlay(false);
-          });
-        }
-      }
-    }, 2400);
-
-    return () => clearTimeout(timer);
-  }, [isReady]);
-
-  // Pause/Resume video when user scrolls in/out of hero section
-  useEffect(() => {
-    const handleScroll = () => {
-      if (sectionRef.current && videoRef.current) {
-        const sectionRect = sectionRef.current.getBoundingClientRect();
-        const isInView = sectionRect.top < window.innerHeight && sectionRect.bottom > 0;
-        
-        if (isInView && shouldPlay) {
-          // Section is in view - resume playing
-          if (videoRef.current.paused) {
-            videoRef.current.play().catch(error => {
-              console.log('Resume failed:', error);
-            });
-          }
-        } else {
-          // Section is out of view - pause playing
-          if (!videoRef.current.paused) {
-            videoRef.current.pause();
-          }
-        }
+    const handleVisibilityChange = () => {
+      if (!videoRef.current) return;
+      
+      if (document.hidden) {
+        videoRef.current.pause();
+        setIsPlaying(false);
+      } else {
+        videoRef.current.play().catch(() => console.log('Resume failed'));
+        setIsPlaying(true);
       }
     };
 
-    window.addEventListener('scroll', handleScroll);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+  }, []);
+
+  // Handle scroll to pause/resume
+  useEffect(() => {
+    const handleScroll = () => {
+      if (!sectionRef.current || !videoRef.current) return;
+
+      const rect = sectionRef.current.getBoundingClientRect();
+      const isVisible = rect.top < window.innerHeight * 0.8 && rect.bottom > 0;
+
+      if (isVisible && videoRef.current.paused) {
+        videoRef.current.play().catch(() => console.log('Scroll resume failed'));
+        setIsPlaying(true);
+      } else if (!isVisible && !videoRef.current.paused) {
+        videoRef.current.pause();
+        setIsPlaying(false);
+      }
+    };
+
+    window.addEventListener('scroll', handleScroll, { passive: true });
     return () => window.removeEventListener('scroll', handleScroll);
-  }, [shouldPlay]);
+  }, []);
+
+  // Force play on user interaction as fallback
+  const handleSectionClick = () => {
+    if (videoRef.current && videoRef.current.paused) {
+      videoRef.current.muted = true;
+      videoRef.current.play().catch(() => console.log('Click play failed'));
+    }
+  };
 
   return (
-    <section ref={sectionRef} className="relative w-full h-screen overflow-hidden bg-black">
-      {/* Background Video - Auto-play with muted for compliance */}
+    <section 
+      ref={sectionRef} 
+      className="relative w-full h-screen overflow-hidden bg-black cursor-pointer"
+      onClick={handleSectionClick}
+    >
+      {/* Background Video */}
       <video
         ref={videoRef}
         loop
-        preload="auto"
+        muted
         playsInline
         webkit-playsinline="true"
         x5-playsinline="true"
+        preload="auto"
         className="absolute top-0 left-0 w-full h-full object-cover z-0"
       >
         <source src={heroVideo} type="video/mp4" />
