@@ -10,10 +10,16 @@ export default defineConfig({
     sourcemap: false,
     rollupOptions: {
       output: {
-        manualChunks: {
-          'react-vendor': ['react', 'react-dom'],
-          'motion-vendor': ['framer-motion'],
-          'aos-vendor': ['aos']
+        manualChunks: (id) => {
+          if (id.includes('node_modules/react')) {
+            return 'react-vendor'
+          }
+          if (id.includes('node_modules/framer-motion')) {
+            return 'motion-vendor'
+          }
+          if (id.includes('node_modules/aos')) {
+            return 'aos-vendor'
+          }
         }
       }
     }
