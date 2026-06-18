@@ -1,10 +1,11 @@
-import React, { useRef, useEffect } from 'react';
+import React, { useRef, useEffect, useState } from 'react';
 import AOS from 'aos';
 import 'aos/dist/aos.css';
 
 const Hero = () => {
   const videoRef = useRef(null);
   const sectionRef = useRef(null);
+  const [preloaderDone, setPreloaderDone] = useState(false);
 
   useEffect(() => {
     AOS.init({
@@ -12,44 +13,61 @@ const Hero = () => {
       once: true,
       easing: 'ease-out'
     });
+
+    // Signal that preloader is done after 2.4 seconds
+    const timer = setTimeout(() => {
+      setPreloaderDone(true);
+    }, 2400);
+
+    return () => clearTimeout(timer);
   }, []);
 
-  // Simple and direct autoplay
+  // IMMEDIATELY start video when preloader is done
   useEffect(() => {
-    const autoPlayVideo = () => {
-      if (!videoRef.current) return;
+    if (!preloaderDone || !videoRef.current) return;
 
-      // Wait for preloader to finish
-      setTimeout(() => {
-        if (videoRef.current) {
-          videoRef.current.muted = true;
-          videoRef.current.play().then(() => {
-            // Unmute after play starts
+    const video = videoRef.current;
+
+    // Start playing immediately with muted audio
+    video.muted = true;
+    video.currentTime = 0;
+    
+    const playVideo = () => {
+      const playPromise = video.play();
+      if (playPromise !== undefined) {
+        playPromise
+          .then(() => {
+            console.log('✓ Video playing');
+            // Unmute immediately after playing starts
             setTimeout(() => {
-              if (videoRef.current) {
-                videoRef.current.muted = false;
-              }
-            }, 1000);
-          }).catch(err => {
-            console.log('Autoplay failed:', err);
+              video.muted = false;
+              console.log('✓ Audio enabled');
+            }, 100);
+          })
+          .catch(error => {
+            console.log('Play error:', error);
+            // Retry if it fails
+            setTimeout(() => {
+              video.play().catch(() => {});
+            }, 500);
           });
-        }
-      }, 2500);
+      }
     };
 
-    autoPlayVideo();
-  }, []);
+    playVideo();
+  }, [preloaderDone]);
 
-  // Handle scroll
+  // Handle scroll to pause/resume
   useEffect(() => {
     const handleScroll = () => {
       if (!sectionRef.current || !videoRef.current) return;
-      const rect = sectionRef.current.getBoundingClientRect();
-      const isInView = rect.top < window.innerHeight && rect.bottom > 0;
 
-      if (isInView && videoRef.current.paused) {
+      const rect = sectionRef.current.getBoundingClientRect();
+      const isVisible = rect.top < window.innerHeight && rect.bottom > 0;
+
+      if (isVisible && videoRef.current.paused) {
         videoRef.current.play().catch(() => {});
-      } else if (!isInView && !videoRef.current.paused) {
+      } else if (!isVisible && !videoRef.current.paused) {
         videoRef.current.pause();
       }
     };
@@ -58,20 +76,36 @@ const Hero = () => {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
+  // Handle tab visibility
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (!videoRef.current) return;
+      if (document.hidden) {
+        videoRef.current.pause();
+      } else {
+        videoRef.current.play().catch(() => {});
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+  }, []);
+
   return (
     <section 
       ref={sectionRef} 
       className="relative w-full h-screen overflow-hidden bg-black"
     >
-      {/* Background Video - Direct source */}
+      {/* Video with loop enabled */}
       <video
         ref={videoRef}
-        loop
+        loop={true}
         autoPlay={false}
         muted={true}
-        playsInline
+        playsInline={true}
         preload="auto"
         className="absolute top-0 left-0 w-full h-full object-cover z-0"
+        onError={(e) => console.error('Video error:', e)}
       >
         <source src="/video/hero.mp4" type="video/mp4" />
       </video>
