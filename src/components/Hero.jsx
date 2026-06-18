@@ -4,7 +4,6 @@ import 'aos/dist/aos.css';
 
 const Hero = () => {
   const videoRef = useRef(null);
-  const sectionRef = useRef(null);
 
   useEffect(() => {
     AOS.init({
@@ -12,99 +11,40 @@ const Hero = () => {
       once: true,
       easing: 'ease-out'
     });
-  }, []);
 
-  // INSTANT video play - runs immediately when component mounts
-  useEffect(() => {
+    // Play video IMMEDIATELY on mount
     const video = videoRef.current;
-    if (!video) return;
-
-    // Function to start video
-    const startVideo = () => {
+    if (video) {
       video.muted = true;
-      video.load(); // Force reload
-      
-      const playPromise = video.play();
-      if (playPromise !== undefined) {
-        playPromise
-          .then(() => {
-            console.log('✓ Video playing');
-            // Unmute immediately
-            setTimeout(() => {
-              video.muted = false;
-            }, 10);
-          })
-          .catch(err => {
-            console.error('Play failed:', err);
-            // Retry
-            setTimeout(() => {
-              video.muted = true;
-              video.play().then(() => {
-                setTimeout(() => {
-                  video.muted = false;
-                }, 10);
-              }).catch(() => {});
-            }, 100);
-          });
-      }
-    };
-
-    // Try to play immediately
-    startVideo();
-
-    // Also try when video can play
-    video.addEventListener('canplay', startVideo);
-    video.addEventListener('loadeddata', startVideo);
-
-    return () => {
-      video.removeEventListener('canplay', startVideo);
-      video.removeEventListener('loadeddata', startVideo);
-    };
-  }, []);
-
-  // Scroll handler
-  useEffect(() => {
-    const handleScroll = () => {
-      if (!sectionRef.current || !videoRef.current) return;
-      const rect = sectionRef.current.getBoundingClientRect();
-      const isVisible = rect.top < window.innerHeight && rect.bottom > 0;
-
-      if (isVisible && videoRef.current.paused) {
-        videoRef.current.play().catch(() => {});
-      } else if (!isVisible && !videoRef.current.paused) {
-        videoRef.current.pause();
-      }
-    };
-
-    window.addEventListener('scroll', handleScroll, { passive: true });
-    return () => window.removeEventListener('scroll', handleScroll);
+      video.play().then(() => {
+        // Unmute after video starts
+        setTimeout(() => {
+          video.muted = false;
+        }, 500);
+      }).catch(() => {
+        // Retry if fails
+        setTimeout(() => {
+          video.play().catch(() => {});
+        }, 100);
+      });
+    }
   }, []);
 
   return (
-    <section 
-      ref={sectionRef} 
-      className="relative w-full h-screen overflow-hidden bg-black"
-    >
-      {/* Video element with all attributes for production */}
+    <section className="relative w-full h-screen overflow-hidden bg-black">
       <video
         ref={videoRef}
         loop
         muted
         autoPlay
         playsInline
-        webkit-playsinline="true"
-        x5-playsinline="true"
         preload="auto"
-        poster=""
         className="absolute top-0 left-0 w-full h-full object-cover z-0"
-        style={{ backgroundColor: 'transparent' }}
       >
         <source src="/video/hero.mp4" type="video/mp4" />
       </video>
 
-      {/* Content */}
       <div className="absolute inset-0 z-20 px-6 pb-20 md:pb-[8%] md:px-12 max-w-7xl mx-auto flex flex-col md:flex-row justify-end md:justify-between items-start md:items-end text-left w-full">
-        
         <div className="flex flex-col items-start text-left max-w-2xl w-full">
           <h1 
             data-aos="fade-up"
