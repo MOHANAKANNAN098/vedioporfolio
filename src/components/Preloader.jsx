@@ -5,10 +5,10 @@ const Preloader = () => {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // Reduced wait time for faster transition on mobile
+    // Fast preloader - finishes in 1.5 seconds
     const timer = setTimeout(() => {
       setIsLoading(false);
-    }, 2400);
+    }, 1500);
     
     return () => clearTimeout(timer);
   }, []);
@@ -20,7 +20,7 @@ const Preloader = () => {
           key="preloader"
           initial={{ y: 0 }}
           exit={{ y: "-100%" }}
-          transition={{ duration: 0.8, ease: [0.76, 0, 0.24, 1] }}
+          transition={{ duration: 0.5, ease: [0.76, 0, 0.24, 1] }}
           className="fixed inset-0 w-full h-screen bg-[#ff2a2a] z-[100000] flex items-center justify-center"
         >
           {/* Logo Container */}

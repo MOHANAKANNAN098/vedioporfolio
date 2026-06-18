@@ -1,11 +1,10 @@
-import React, { useRef, useEffect, useState } from 'react';
+import React, { useRef, useEffect } from 'react';
 import AOS from 'aos';
 import 'aos/dist/aos.css';
 
 const Hero = () => {
   const videoRef = useRef(null);
   const sectionRef = useRef(null);
-  const [preloaderDone, setPreloaderDone] = useState(false);
 
   useEffect(() => {
     AOS.init({
@@ -13,49 +12,45 @@ const Hero = () => {
       once: true,
       easing: 'ease-out'
     });
-
-    // Signal that preloader is done after 2.4 seconds
-    const timer = setTimeout(() => {
-      setPreloaderDone(true);
-    }, 2400);
-
-    return () => clearTimeout(timer);
   }, []);
 
-  // IMMEDIATELY start video when preloader is done
+  // Play video INSTANTLY - no delays
   useEffect(() => {
-    if (!preloaderDone || !videoRef.current) return;
+    const playVideoNow = () => {
+      if (!videoRef.current) return;
 
-    const video = videoRef.current;
-
-    // Start playing immediately with muted audio
-    video.muted = true;
-    video.currentTime = 0;
-    
-    const playVideo = () => {
-      const playPromise = video.play();
-      if (playPromise !== undefined) {
-        playPromise
-          .then(() => {
-            console.log('✓ Video playing');
-            // Unmute immediately after playing starts
-            setTimeout(() => {
-              video.muted = false;
-              console.log('✓ Audio enabled');
-            }, 100);
-          })
-          .catch(error => {
-            console.log('Play error:', error);
-            // Retry if it fails
-            setTimeout(() => {
-              video.play().catch(() => {});
-            }, 500);
-          });
-      }
+      const video = videoRef.current;
+      video.muted = true;
+      video.currentTime = 0;
+      
+      // Play immediately
+      video.play()
+        .then(() => {
+          console.log('✓ Video playing instantly');
+          // Unmute after minimal delay
+          setTimeout(() => {
+            video.muted = false;
+            console.log('✓ Audio enabled');
+          }, 50);
+        })
+        .catch(error => {
+          console.log('Play failed, retrying:', error);
+          setTimeout(() => {
+            video.muted = true;
+            video.play()
+              .then(() => {
+                setTimeout(() => {
+                  video.muted = false;
+                }, 50);
+              })
+              .catch(() => {});
+          }, 200);
+        });
     };
 
-    playVideo();
-  }, [preloaderDone]);
+    // Play on component mount - no delays
+    playVideoNow();
+  }, []);
 
   // Handle scroll to pause/resume
   useEffect(() => {
@@ -96,11 +91,10 @@ const Hero = () => {
       ref={sectionRef} 
       className="relative w-full h-screen overflow-hidden bg-black"
     >
-      {/* Video with loop enabled */}
+      {/* Video - Plays instantly on mount */}
       <video
         ref={videoRef}
         loop={true}
-        autoPlay={false}
         muted={true}
         playsInline={true}
         preload="auto"
