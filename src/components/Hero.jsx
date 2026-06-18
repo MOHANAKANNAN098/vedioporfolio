@@ -6,7 +6,7 @@ import heroVideo from '../assets/hero video/1000086985 (1).mp4';
 const Hero = () => {
   const videoRef = useRef(null);
   const sectionRef = useRef(null);
-  const [isPlaying, setIsPlaying] = useState(false);
+  const [videoStarted, setVideoStarted] = useState(false);
 
   useEffect(() => {
     AOS.init({
@@ -16,52 +16,78 @@ const Hero = () => {
     });
   }, []);
 
-  // Aggressive autoplay for all devices
+  // Simple and direct autoplay after preloader
   useEffect(() => {
-    const startVideoPlayback = () => {
+    const autoplayVideo = async () => {
       if (!videoRef.current) return;
 
-      videoRef.current.muted = true;
-      videoRef.current.volume = 0;
+      try {
+        // Start with muted (browser requirement)
+        videoRef.current.muted = true;
+        videoRef.current.volume = 0;
 
-      const playAttempt = () => {
-        videoRef.current.play().then(() => {
-          setIsPlaying(true);
-          // Unmute after 500ms of successful playback
-          setTimeout(() => {
-            if (videoRef.current) {
-              videoRef.current.muted = false;
-              videoRef.current.volume = 1;
-            }
-          }, 500);
-        }).catch(() => {
-          console.log('Initial play failed, will retry...');
-          setTimeout(playAttempt, 500);
-        });
-      };
+        // Wait for preloader to finish (2.2s) + small buffer
+        await new Promise(resolve => setTimeout(resolve, 2400));
 
-      playAttempt();
+        // Try to play
+        await videoRef.current.play();
+        
+        // Unmute after successful play
+        setTimeout(() => {
+          if (videoRef.current) {
+            videoRef.current.muted = false;
+            videoRef.current.volume = 1;
+          }
+        }, 300);
+
+        setVideoStarted(true);
+      } catch (err) {
+        console.log('Autoplay attempt 1 failed, retrying...');
+        // Retry after 1 second
+        setTimeout(() => {
+          if (videoRef.current) {
+            videoRef.current.play().catch(() => {
+              console.log('Autoplay attempt 2 failed');
+            });
+          }
+        }, 1000);
+      }
     };
 
-    // Delay to allow preloader to finish
-    const preloaderTimer = setTimeout(() => {
-      startVideoPlayback();
-    }, 2200);
-
-    return () => clearTimeout(preloaderTimer);
+    autoplayVideo();
   }, []);
 
-  // Handle visibility changes
+  // Handle scroll to pause/resume
+  useEffect(() => {
+    if (!videoStarted) return;
+
+    const handleScroll = () => {
+      if (!sectionRef.current || !videoRef.current) return;
+
+      const rect = sectionRef.current.getBoundingClientRect();
+      const isInView = rect.top < window.innerHeight && rect.bottom > 0;
+
+      if (isInView && videoRef.current.paused) {
+        videoRef.current.play().catch(() => {});
+        setVideoStarted(true);
+      } else if (!isInView && !videoRef.current.paused) {
+        videoRef.current.pause();
+      }
+    };
+
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, [videoStarted]);
+
+  // Handle page visibility (tab switching)
   useEffect(() => {
     const handleVisibilityChange = () => {
       if (!videoRef.current) return;
-      
+
       if (document.hidden) {
         videoRef.current.pause();
-        setIsPlaying(false);
       } else {
-        videoRef.current.play().catch(() => console.log('Resume failed'));
-        setIsPlaying(true);
+        videoRef.current.play().catch(() => {});
       }
     };
 
@@ -69,54 +95,35 @@ const Hero = () => {
     return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
   }, []);
 
-  // Handle scroll to pause/resume
-  useEffect(() => {
-    const handleScroll = () => {
-      if (!sectionRef.current || !videoRef.current) return;
-
-      const rect = sectionRef.current.getBoundingClientRect();
-      const isVisible = rect.top < window.innerHeight * 0.8 && rect.bottom > 0;
-
-      if (isVisible && videoRef.current.paused) {
-        videoRef.current.play().catch(() => console.log('Scroll resume failed'));
-        setIsPlaying(true);
-      } else if (!isVisible && !videoRef.current.paused) {
-        videoRef.current.pause();
-        setIsPlaying(false);
-      }
-    };
-
-    window.addEventListener('scroll', handleScroll, { passive: true });
-    return () => window.removeEventListener('scroll', handleScroll);
-  }, []);
-
-  // Force play on user interaction as fallback
-  const handleSectionClick = () => {
+  // Fallback: Click to play
+  const handleClick = () => {
     if (videoRef.current && videoRef.current.paused) {
       videoRef.current.muted = true;
-      videoRef.current.play().catch(() => console.log('Click play failed'));
+      videoRef.current.play().then(() => {
+        setTimeout(() => {
+          if (videoRef.current) {
+            videoRef.current.muted = false;
+          }
+        }, 300);
+      }).catch(() => {});
     }
   };
 
   return (
     <section 
       ref={sectionRef} 
-      className="relative w-full h-screen overflow-hidden bg-black cursor-pointer"
-      onClick={handleSectionClick}
+      className="relative w-full h-screen overflow-hidden bg-black"
+      onClick={handleClick}
     >
-      {/* Background Video */}
+      {/* Background Video - Simple and Direct */}
       <video
         ref={videoRef}
         loop
-        muted
         playsInline
-        webkit-playsinline="true"
-        x5-playsinline="true"
         preload="auto"
         className="absolute top-0 left-0 w-full h-full object-cover z-0"
       >
         <source src={heroVideo} type="video/mp4" />
-        Your browser does not support the video tag.
       </video>
 
       {/* Content Container */}
@@ -152,7 +159,7 @@ const Hero = () => {
               View My Work
             </button>
             
-            {/* Secondary Button - Glassmorphism style */}
+            {/* Secondary Button */}
             <button className="px-4 py-2 md:px-6 md:py-2 text-xs md:text-base rounded-full bg-black/40 border border-white text-white font-semibold hover:bg-black/60 transition-all duration-300 backdrop-blur-md">
               Contact Me
             </button>
