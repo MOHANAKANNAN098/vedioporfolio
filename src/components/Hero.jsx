@@ -6,6 +6,7 @@ import heroVideo from '../assets/hero video/1000086985 (1).mp4';
 const Hero = () => {
   const videoRef = useRef(null);
   const sectionRef = useRef(null);
+  const [videoReady, setVideoReady] = useState(false);
 
   useEffect(() => {
     AOS.init({
@@ -15,50 +16,76 @@ const Hero = () => {
     });
   }, []);
 
-  // Automatic video playback - NO user interaction needed
+  // Handle video loaded metadata
   useEffect(() => {
-    const playVideoAutomatically = async () => {
-      if (!videoRef.current) return;
+    if (!videoRef.current) return;
 
+    const handleLoadedMetadata = () => {
+      setVideoReady(true);
+    };
+
+    const video = videoRef.current;
+    video.addEventListener('loadedmetadata', handleLoadedMetadata);
+
+    return () => video.removeEventListener('loadedmetadata', handleLoadedMetadata);
+  }, []);
+
+  // Automatic video playback after preloader
+  useEffect(() => {
+    if (!videoReady || !videoRef.current) return;
+
+    const playVideo = async () => {
       try {
-        // Start muted (browser requirement for autoplay)
+        // Wait for preloader to finish
+        await new Promise(resolve => setTimeout(resolve, 2400));
+
+        if (!videoRef.current) return;
+
+        // Set muted for autoplay compliance
         videoRef.current.muted = true;
         videoRef.current.volume = 0;
 
-        // Wait for preloader to finish completely
-        await new Promise(resolve => setTimeout(resolve, 2400));
-
-        // Play video automatically
+        // Attempt to play
         const playPromise = videoRef.current.play();
-        
+
         if (playPromise !== undefined) {
-          playPromise.then(() => {
-            // Video started successfully - unmute after a brief moment
-            setTimeout(() => {
-              if (videoRef.current) {
-                videoRef.current.muted = false;
-                videoRef.current.volume = 1;
-              }
-            }, 200);
-          }).catch(error => {
-            // If autoplay fails, retry once
-            console.log('First autoplay attempt failed, retrying...');
-            setTimeout(() => {
-              if (videoRef.current) {
-                videoRef.current.play().catch(() => {
-                  console.log('Video autoplay could not be initiated');
-                });
-              }
-            }, 800);
-          });
+          playPromise
+            .then(() => {
+              // Successfully playing - unmute after delay
+              setTimeout(() => {
+                if (videoRef.current) {
+                  videoRef.current.muted = false;
+                  videoRef.current.volume = 1;
+                }
+              }, 300);
+            })
+            .catch(error => {
+              console.log('Autoplay failed:', error.message);
+              // Retry after a brief delay
+              setTimeout(() => {
+                if (videoRef.current && videoRef.current.paused) {
+                  videoRef.current.muted = true;
+                  videoRef.current.play()
+                    .then(() => {
+                      setTimeout(() => {
+                        if (videoRef.current) {
+                          videoRef.current.muted = false;
+                          videoRef.current.volume = 1;
+                        }
+                      }, 300);
+                    })
+                    .catch(() => {});
+                }
+              }, 1000);
+            });
         }
       } catch (err) {
-        console.log('Video autoplay error:', err);
+        console.log('Error:', err);
       }
     };
 
-    playVideoAutomatically();
-  }, []);
+    playVideo();
+  }, [videoReady]);
 
   // Handle scroll to pause/resume
   useEffect(() => {
@@ -79,7 +106,7 @@ const Hero = () => {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  // Handle page visibility (tab switching)
+  // Handle page visibility
   useEffect(() => {
     const handleVisibilityChange = () => {
       if (!videoRef.current) return;
@@ -100,12 +127,17 @@ const Hero = () => {
       ref={sectionRef} 
       className="relative w-full h-screen overflow-hidden bg-black"
     >
-      {/* Background Video - Automatic Autoplay */}
+      {/* Background Video with all autoplay attributes */}
       <video
         ref={videoRef}
         loop
+        autoPlay
+        muted
         playsInline
+        webkit-playsinline="true"
+        x5-playsinline="true"
         preload="auto"
+        crossOrigin="anonymous"
         className="absolute top-0 left-0 w-full h-full object-cover z-0"
       >
         <source src={heroVideo} type="video/mp4" />
