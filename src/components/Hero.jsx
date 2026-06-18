@@ -41,7 +41,8 @@ const Hero = () => {
 
         if (!videoRef.current) return;
 
-        // Set muted for autoplay compliance
+        // Ensure video properties are set correctly
+        videoRef.current.currentTime = 0;
         videoRef.current.muted = true;
         videoRef.current.volume = 0;
 
@@ -51,13 +52,14 @@ const Hero = () => {
         if (playPromise !== undefined) {
           playPromise
             .then(() => {
-              // Successfully playing - unmute after delay
+              // Successfully playing - unmute after 500ms to ensure audio plays
               setTimeout(() => {
                 if (videoRef.current) {
                   videoRef.current.muted = false;
                   videoRef.current.volume = 1;
+                  console.log('Video playing with audio');
                 }
-              }, 300);
+              }, 500);
             })
             .catch(error => {
               console.log('Autoplay failed:', error.message);
@@ -65,16 +67,18 @@ const Hero = () => {
               setTimeout(() => {
                 if (videoRef.current && videoRef.current.paused) {
                   videoRef.current.muted = true;
+                  videoRef.current.currentTime = 0;
                   videoRef.current.play()
                     .then(() => {
                       setTimeout(() => {
                         if (videoRef.current) {
                           videoRef.current.muted = false;
                           videoRef.current.volume = 1;
+                          console.log('Video playing with audio (retry)');
                         }
-                      }, 300);
+                      }, 500);
                     })
-                    .catch(() => {});
+                    .catch(err => console.log('Retry failed:', err));
                 }
               }, 1000);
             });
@@ -87,17 +91,18 @@ const Hero = () => {
     playVideo();
   }, [videoReady]);
 
-  // Handle scroll to pause/resume
+  // Handle scroll to pause/resume - only pause if scrolled far away
   useEffect(() => {
     const handleScroll = () => {
       if (!sectionRef.current || !videoRef.current) return;
 
       const rect = sectionRef.current.getBoundingClientRect();
-      const isInView = rect.top < window.innerHeight && rect.bottom > 0;
+      const isInView = rect.top < window.innerHeight * 0.5 && rect.bottom > 0;
 
       if (isInView && videoRef.current.paused) {
         videoRef.current.play().catch(() => {});
-      } else if (!isInView && !videoRef.current.paused) {
+      } else if (!isInView && rect.top < -300 && !videoRef.current.paused) {
+        // Only pause if scrolled more than 300px past the section
         videoRef.current.pause();
       }
     };
