@@ -40,17 +40,32 @@ const Navbar = () => {
 
         {/* Center: Desktop Menu Links */}
         <div className="hidden md:flex space-x-8">
-          {navLinks.map((link) => (
-            <a 
-              key={link} 
-              href={`#${link.toLowerCase()}`}
-              className="text-white/80 hover:text-white font-medium relative group transition-colors duration-300"
-            >
-              {link}
-              {/* Smooth hover underline */}
-              <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-red-500 transition-all duration-300 group-hover:w-full"></span>
-            </a>
-          ))}
+          {navLinks.map((link) => {
+            let href = `#${link.toLowerCase()}`;
+            if (link === 'Home') href = '#';
+            return (
+              <a 
+                key={link} 
+                href={href}
+                className="text-white/80 hover:text-white font-medium relative group transition-colors duration-300"
+                onClick={(e) => {
+                  e.preventDefault();
+                  if (link === 'Home') {
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                  } else {
+                    const element = document.getElementById(link.toLowerCase());
+                    if (element) {
+                      element.scrollIntoView({ behavior: 'smooth' });
+                    }
+                  }
+                }}
+              >
+                {link}
+                {/* Smooth hover underline */}
+                <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-red-500 transition-all duration-300 group-hover:w-full"></span>
+              </a>
+            );
+          })}
         </div>
 
         {/* Right Side: CTA Button */}
@@ -87,20 +102,42 @@ const Navbar = () => {
         }`}
       >
         <div className="flex flex-col px-6 space-y-4">
-          {navLinks.map((link) => (
-            <a 
-              key={link} 
-              href={`#${link.toLowerCase()}`}
-              onClick={() => setIsOpen(false)}
-              className="text-white hover:text-black font-bold text-lg border-b border-white/20 pb-2 transition-colors"
-            >
-              {link}
-            </a>
-          ))}
+          {navLinks.map((link) => {
+            let href = `#${link.toLowerCase()}`;
+            if (link === 'Home') href = '#';
+            return (
+              <a 
+                key={link} 
+                href={href}
+                onClick={(e) => {
+                  e.preventDefault();
+                  setIsOpen(false);
+                  if (link === 'Home') {
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                  } else {
+                    const element = document.getElementById(link.toLowerCase());
+                    if (element) {
+                      element.scrollIntoView({ behavior: 'smooth' });
+                    }
+                  }
+                }}
+                className="text-white hover:text-black font-bold text-lg border-b border-white/20 pb-2 transition-colors"
+              >
+                {link}
+              </a>
+            );
+          })}
           <div className="pt-4 pb-2">
              <a 
                href="#contact" 
-               onClick={() => setIsOpen(false)} 
+               onClick={(e) => {
+                 e.preventDefault();
+                 setIsOpen(false);
+                 const element = document.getElementById('contact');
+                 if (element) {
+                   element.scrollIntoView({ behavior: 'smooth' });
+                 }
+               }} 
                className="inline-block px-6 py-3 rounded-full bg-white text-[#ff2a2a] font-black hover:bg-black hover:text-white transition-colors w-full text-center shadow-lg"
              >
                Hire Me

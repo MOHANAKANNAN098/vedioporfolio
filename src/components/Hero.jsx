@@ -8,6 +8,7 @@ const Hero = () => {
   const videoRef = useRef(null);
   const sectionRef = useRef(null);
   const [shouldPlay, setShouldPlay] = useState(false);
+  const [isReady, setIsReady] = useState(false);
 
   useEffect(() => {
     AOS.init({
@@ -17,28 +18,46 @@ const Hero = () => {
     });
   }, []);
 
-  // Start video after preloader finishes - with muted for autoplay compliance
+  // Handle video ready state
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video) return;
+
+    const handleCanPlay = () => {
+      setIsReady(true);
+    };
+
+    video.addEventListener('canplay', handleCanPlay);
+    return () => video.removeEventListener('canplay', handleCanPlay);
+  }, []);
+
+  // Start video after preloader finishes
   useEffect(() => {
     const timer = setTimeout(() => {
-      if (videoRef.current) {
+      if (videoRef.current && isReady) {
         videoRef.current.currentTime = 0;
         videoRef.current.muted = true;
-        videoRef.current.play().catch(error => {
-          console.log('Autoplay failed:', error);
-        });
-        setShouldPlay(true);
         
-        // After video has played for a moment, unmute if user interaction allows
-        setTimeout(() => {
-          if (videoRef.current) {
-            videoRef.current.muted = false;
-          }
-        }, 500);
+        const playPromise = videoRef.current.play();
+        if (playPromise !== undefined) {
+          playPromise.then(() => {
+            setShouldPlay(true);
+            // Unmute after video starts playing
+            setTimeout(() => {
+              if (videoRef.current) {
+                videoRef.current.muted = false;
+              }
+            }, 200);
+          }).catch(error => {
+            console.log('Autoplay failed:', error);
+            setShouldPlay(false);
+          });
+        }
       }
-    }, 3200);
+    }, 2400);
 
     return () => clearTimeout(timer);
-  }, []);
+  }, [isReady]);
 
   // Pause/Resume video when user scrolls in/out of hero section
   useEffect(() => {
@@ -73,7 +92,10 @@ const Hero = () => {
       <video
         ref={videoRef}
         loop
+        preload="auto"
         playsInline
+        webkit-playsinline="true"
+        x5-playsinline="true"
         className="absolute top-0 left-0 w-full h-full object-cover z-0"
       >
         <source src={heroVideo} type="video/mp4" />

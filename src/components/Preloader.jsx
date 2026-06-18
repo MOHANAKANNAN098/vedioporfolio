@@ -5,11 +5,10 @@ const Preloader = () => {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // Wait for the water fill animation (1.5s) + buffer time (1s)
-    // before the shutter goes up smoothly.
+    // Reduced wait time for faster transition on mobile
     const timer = setTimeout(() => {
       setIsLoading(false);
-    }, 2800);
+    }, 2400);
     
     return () => clearTimeout(timer);
   }, []);
@@ -21,7 +20,7 @@ const Preloader = () => {
           key="preloader"
           initial={{ y: 0 }}
           exit={{ y: "-100%" }}
-          transition={{ duration: 1.2, ease: [0.76, 0, 0.24, 1] }}
+          transition={{ duration: 0.8, ease: [0.76, 0, 0.24, 1] }}
           className="fixed inset-0 w-full h-screen bg-[#ff2a2a] z-[100000] flex items-center justify-center"
         >
           {/* Logo Container */}
