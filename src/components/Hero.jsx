@@ -14,42 +14,34 @@ const Hero = () => {
     });
   }, []);
 
-  // Play video INSTANTLY - no delays
+  // Play video on FIRST render - immediately
   useEffect(() => {
-    const playVideoNow = () => {
-      if (!videoRef.current) return;
+    const video = videoRef.current;
+    if (!video) return;
 
-      const video = videoRef.current;
-      video.muted = true;
-      video.currentTime = 0;
-      
-      // Play immediately
-      video.play()
+    // Set video properties
+    video.muted = true;
+    video.currentTime = 0;
+
+    // Play immediately
+    const playPromise = video.play();
+    
+    if (playPromise !== undefined) {
+      playPromise
         .then(() => {
-          console.log('✓ Video playing instantly');
-          // Unmute after minimal delay
+          // Unmute instantly
           setTimeout(() => {
             video.muted = false;
-            console.log('✓ Audio enabled');
-          }, 50);
+          }, 30);
         })
         .catch(error => {
-          console.log('Play failed, retrying:', error);
+          console.log('Autoplay error:', error);
+          // Retry once
           setTimeout(() => {
-            video.muted = true;
-            video.play()
-              .then(() => {
-                setTimeout(() => {
-                  video.muted = false;
-                }, 50);
-              })
-              .catch(() => {});
-          }, 200);
+            video.play().catch(() => {});
+          }, 300);
         });
-    };
-
-    // Play on component mount - no delays
-    playVideoNow();
+    }
   }, []);
 
   // Handle scroll to pause/resume
@@ -91,7 +83,7 @@ const Hero = () => {
       ref={sectionRef} 
       className="relative w-full h-screen overflow-hidden bg-black"
     >
-      {/* Video - Plays instantly on mount */}
+      {/* Background Video - Plays instantly */}
       <video
         ref={videoRef}
         loop={true}
