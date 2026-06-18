@@ -4,6 +4,7 @@ import 'aos/dist/aos.css';
 
 const Hero = () => {
   const videoRef = useRef(null);
+  const sectionRef = useRef(null);
 
   useEffect(() => {
     AOS.init({
@@ -11,27 +12,75 @@ const Hero = () => {
       once: true,
       easing: 'ease-out'
     });
+  }, []);
 
-    // Play video IMMEDIATELY on mount
+  // Force video to play continuously
+  useEffect(() => {
     const video = videoRef.current;
-    if (video) {
-      video.muted = true;
-      video.play().then(() => {
-        // Unmute after video starts
-        setTimeout(() => {
-          video.muted = false;
-        }, 500);
-      }).catch(() => {
-        // Retry if fails
-        setTimeout(() => {
-          video.play().catch(() => {});
-        }, 100);
-      });
-    }
+    if (!video) return;
+
+    // Set up video element
+    video.muted = true;
+    video.volume = 1;
+    video.loop = true;
+
+    // Try playing
+    const attemptPlay = () => {
+      video.play()
+        .then(() => {
+          console.log('✓ Video playing');
+          setTimeout(() => {
+            video.muted = false;
+          }, 300);
+        })
+        .catch(err => {
+          console.log('Play error, retrying:', err);
+          setTimeout(attemptPlay, 500);
+        });
+    };
+
+    attemptPlay();
+
+    // Also handle when video can play
+    const handleCanPlay = () => {
+      if (video.paused) {
+        attemptPlay();
+      }
+    };
+
+    video.addEventListener('canplay', handleCanPlay);
+    video.addEventListener('loadedmetadata', handleCanPlay);
+
+    return () => {
+      video.removeEventListener('canplay', handleCanPlay);
+      video.removeEventListener('loadedmetadata', handleCanPlay);
+    };
+  }, []);
+
+  // Handle scroll
+  useEffect(() => {
+    const handleScroll = () => {
+      if (!sectionRef.current || !videoRef.current) return;
+      const rect = sectionRef.current.getBoundingClientRect();
+      const isVisible = rect.top < window.innerHeight && rect.bottom > 0;
+
+      if (isVisible && videoRef.current.paused) {
+        videoRef.current.play().catch(() => {});
+      } else if (!isVisible && !videoRef.current.paused) {
+        videoRef.current.pause();
+      }
+    };
+
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
   return (
-    <section className="relative w-full h-screen overflow-hidden bg-black">
+    <section 
+      ref={sectionRef}
+      className="relative w-full h-screen overflow-hidden bg-black"
+    >
+      {/* Video */}
       <video
         ref={videoRef}
         loop
@@ -39,12 +88,25 @@ const Hero = () => {
         autoPlay
         playsInline
         preload="auto"
+        crossOrigin="anonymous"
         className="absolute top-0 left-0 w-full h-full object-cover z-0"
+        onError={(e) => {
+          console.error('Video load error:', e);
+        }}
+        onEnded={() => {
+          console.log('Video ended, restarting...');
+        }}
       >
         <source src="/video/hero.mp4" type="video/mp4" />
+        Your browser does not support the video tag.
       </video>
 
+      {/* Black overlay if video fails */}
+      <div className="absolute inset-0 z-0 bg-black opacity-10"></div>
+
+      {/* Content */}
       <div className="absolute inset-0 z-20 px-6 pb-20 md:pb-[8%] md:px-12 max-w-7xl mx-auto flex flex-col md:flex-row justify-end md:justify-between items-start md:items-end text-left w-full">
+        
         <div className="flex flex-col items-start text-left max-w-2xl w-full">
           <h1 
             data-aos="fade-up"
@@ -77,6 +139,7 @@ const Hero = () => {
         </div>
       </div>
 
+      {/* Scroll Indicator */}
       <div 
         data-aos="fade-up"
         data-aos-delay="800"
