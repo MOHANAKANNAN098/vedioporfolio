@@ -7,30 +7,10 @@ export default defineConfig({
   build: {
     target: 'esnext',
     minify: 'terser',
-    sourcemap: false,
-    rollupOptions: {
-      output: {
-        manualChunks: (id) => {
-          if (id.includes('node_modules/react')) {
-            return 'react-vendor'
-          }
-          if (id.includes('node_modules/framer-motion')) {
-            return 'motion-vendor'
-          }
-          if (id.includes('node_modules/aos')) {
-            return 'aos-vendor'
-          }
-        }
-      }
-    }
+    sourcemap: false
   },
   server: {
-    middlewareMode: false,
-    headers: {
-      'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type'
-    }
+    middlewareMode: false
   },
   preview: {
     port: 3000,
