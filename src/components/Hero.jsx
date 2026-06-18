@@ -1,6 +1,7 @@
 import React, { useRef, useEffect } from 'react';
 import AOS from 'aos';
 import 'aos/dist/aos.css';
+import heroVideo from '../assets/hero video/1000086985 (1).mp4';
 
 const Hero = () => {
   const videoRef = useRef(null);
@@ -14,50 +15,66 @@ const Hero = () => {
     });
   }, []);
 
-  // Force video to play continuously
+  // Play video INSTANTLY when component loads
   useEffect(() => {
     const video = videoRef.current;
     if (!video) return;
 
-    // Set up video element
-    video.muted = true;
-    video.volume = 1;
-    video.loop = true;
-
-    // Try playing
-    const attemptPlay = () => {
+    // Force video to play immediately
+    const playNow = () => {
+      video.muted = true;
+      video.currentTime = 0;
+      
       video.play()
         .then(() => {
-          console.log('✓ Video playing');
+          console.log('✓ Video started');
+          // Unmute after video plays
           setTimeout(() => {
             video.muted = false;
-          }, 300);
+            console.log('✓ Audio enabled');
+          }, 200);
         })
         .catch(err => {
-          console.log('Play error, retrying:', err);
-          setTimeout(attemptPlay, 500);
+          console.error('Play failed:', err);
+          // Retry immediately
+          setTimeout(() => {
+            video.muted = true;
+            video.play()
+              .then(() => {
+                setTimeout(() => {
+                  video.muted = false;
+                }, 200);
+              })
+              .catch(() => console.error('Retry failed'));
+          }, 100);
         });
     };
 
-    attemptPlay();
+    // Play immediately on mount
+    playNow();
 
-    // Also handle when video can play
-    const handleCanPlay = () => {
+    // Also play when metadata loads
+    const handleLoadedMetadata = () => {
+      console.log('Metadata loaded');
       if (video.paused) {
-        attemptPlay();
+        playNow();
       }
     };
 
-    video.addEventListener('canplay', handleCanPlay);
-    video.addEventListener('loadedmetadata', handleCanPlay);
+    video.addEventListener('loadedmetadata', handleLoadedMetadata);
+    video.addEventListener('play', () => console.log('✓ Video playing'));
+    video.addEventListener('ended', () => {
+      console.log('Video ended, restarting');
+      video.currentTime = 0;
+      video.play();
+    });
 
     return () => {
-      video.removeEventListener('canplay', handleCanPlay);
-      video.removeEventListener('loadedmetadata', handleCanPlay);
+      video.removeEventListener('loadedmetadata', handleLoadedMetadata);
     };
   }, []);
 
-  // Handle scroll
+  // Handle scroll to pause/resume
   useEffect(() => {
     const handleScroll = () => {
       if (!sectionRef.current || !videoRef.current) return;
@@ -80,29 +97,22 @@ const Hero = () => {
       ref={sectionRef}
       className="relative w-full h-screen overflow-hidden bg-black"
     >
-      {/* Video */}
+      {/* Video from src/assets - plays 0-10 seconds */}
       <video
         ref={videoRef}
-        loop
-        muted
-        autoPlay
-        playsInline
+        loop={false}
+        muted={true}
+        autoPlay={true}
+        playsInline={true}
         preload="auto"
-        crossOrigin="anonymous"
         className="absolute top-0 left-0 w-full h-full object-cover z-0"
-        onError={(e) => {
-          console.error('Video load error:', e);
-        }}
-        onEnded={() => {
-          console.log('Video ended, restarting...');
-        }}
+        onError={(e) => console.error('Video error:', e)}
       >
-        <source src="/video/hero.mp4" type="video/mp4" />
-        Your browser does not support the video tag.
+        <source src={heroVideo} type="video/mp4" />
       </video>
 
-      {/* Black overlay if video fails */}
-      <div className="absolute inset-0 z-0 bg-black opacity-10"></div>
+      {/* Fallback color */}
+      <div className="absolute inset-0 z-0 bg-black"></div>
 
       {/* Content */}
       <div className="absolute inset-0 z-20 px-6 pb-20 md:pb-[8%] md:px-12 max-w-7xl mx-auto flex flex-col md:flex-row justify-end md:justify-between items-start md:items-end text-left w-full">
