@@ -6,7 +6,6 @@ import heroVideo from '../assets/hero video/1000086985 (1).mp4';
 const Hero = () => {
   const videoRef = useRef(null);
   const sectionRef = useRef(null);
-  const [videoStarted, setVideoStarted] = useState(false);
 
   useEffect(() => {
     AOS.init({
@@ -16,51 +15,53 @@ const Hero = () => {
     });
   }, []);
 
-  // Simple and direct autoplay after preloader
+  // Automatic video playback - NO user interaction needed
   useEffect(() => {
-    const autoplayVideo = async () => {
+    const playVideoAutomatically = async () => {
       if (!videoRef.current) return;
 
       try {
-        // Start with muted (browser requirement)
+        // Start muted (browser requirement for autoplay)
         videoRef.current.muted = true;
         videoRef.current.volume = 0;
 
-        // Wait for preloader to finish (2.2s) + small buffer
+        // Wait for preloader to finish completely
         await new Promise(resolve => setTimeout(resolve, 2400));
 
-        // Try to play
-        await videoRef.current.play();
+        // Play video automatically
+        const playPromise = videoRef.current.play();
         
-        // Unmute after successful play
-        setTimeout(() => {
-          if (videoRef.current) {
-            videoRef.current.muted = false;
-            videoRef.current.volume = 1;
-          }
-        }, 300);
-
-        setVideoStarted(true);
+        if (playPromise !== undefined) {
+          playPromise.then(() => {
+            // Video started successfully - unmute after a brief moment
+            setTimeout(() => {
+              if (videoRef.current) {
+                videoRef.current.muted = false;
+                videoRef.current.volume = 1;
+              }
+            }, 200);
+          }).catch(error => {
+            // If autoplay fails, retry once
+            console.log('First autoplay attempt failed, retrying...');
+            setTimeout(() => {
+              if (videoRef.current) {
+                videoRef.current.play().catch(() => {
+                  console.log('Video autoplay could not be initiated');
+                });
+              }
+            }, 800);
+          });
+        }
       } catch (err) {
-        console.log('Autoplay attempt 1 failed, retrying...');
-        // Retry after 1 second
-        setTimeout(() => {
-          if (videoRef.current) {
-            videoRef.current.play().catch(() => {
-              console.log('Autoplay attempt 2 failed');
-            });
-          }
-        }, 1000);
+        console.log('Video autoplay error:', err);
       }
     };
 
-    autoplayVideo();
+    playVideoAutomatically();
   }, []);
 
   // Handle scroll to pause/resume
   useEffect(() => {
-    if (!videoStarted) return;
-
     const handleScroll = () => {
       if (!sectionRef.current || !videoRef.current) return;
 
@@ -69,7 +70,6 @@ const Hero = () => {
 
       if (isInView && videoRef.current.paused) {
         videoRef.current.play().catch(() => {});
-        setVideoStarted(true);
       } else if (!isInView && !videoRef.current.paused) {
         videoRef.current.pause();
       }
@@ -77,7 +77,7 @@ const Hero = () => {
 
     window.addEventListener('scroll', handleScroll, { passive: true });
     return () => window.removeEventListener('scroll', handleScroll);
-  }, [videoStarted]);
+  }, []);
 
   // Handle page visibility (tab switching)
   useEffect(() => {
@@ -95,27 +95,12 @@ const Hero = () => {
     return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
   }, []);
 
-  // Fallback: Click to play
-  const handleClick = () => {
-    if (videoRef.current && videoRef.current.paused) {
-      videoRef.current.muted = true;
-      videoRef.current.play().then(() => {
-        setTimeout(() => {
-          if (videoRef.current) {
-            videoRef.current.muted = false;
-          }
-        }, 300);
-      }).catch(() => {});
-    }
-  };
-
   return (
     <section 
       ref={sectionRef} 
       className="relative w-full h-screen overflow-hidden bg-black"
-      onClick={handleClick}
     >
-      {/* Background Video - Simple and Direct */}
+      {/* Background Video - Automatic Autoplay */}
       <video
         ref={videoRef}
         loop
