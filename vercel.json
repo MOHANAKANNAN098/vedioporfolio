@@ -41,7 +41,7 @@
       ]
     },
     {
-      "source": ".*\\.(mp4|webm|ogg)$",
+      "source": "/assets/.*\\.(mp4|webm|ogg)$",
       "headers": [
         {
           "key": "Cache-Control",
