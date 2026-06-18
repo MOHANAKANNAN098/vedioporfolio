@@ -1,12 +1,10 @@
-import React, { useRef, useEffect, useState } from 'react';
+import React, { useRef, useEffect } from 'react';
 import AOS from 'aos';
 import 'aos/dist/aos.css';
-import heroVideo from '../assets/hero video/1000086985 (1).mp4';
 
 const Hero = () => {
   const videoRef = useRef(null);
   const sectionRef = useRef(null);
-  const [isVideoReady, setIsVideoReady] = useState(false);
 
   useEffect(() => {
     AOS.init({
@@ -16,101 +14,42 @@ const Hero = () => {
     });
   }, []);
 
-  // Handle video metadata loaded
+  // Simple and direct autoplay
   useEffect(() => {
-    const video = videoRef.current;
-    if (!video) return;
+    const autoPlayVideo = () => {
+      if (!videoRef.current) return;
 
-    const handleCanPlay = () => {
-      setIsVideoReady(true);
-      console.log('Video ready to play');
+      // Wait for preloader to finish
+      setTimeout(() => {
+        if (videoRef.current) {
+          videoRef.current.muted = true;
+          videoRef.current.play().then(() => {
+            // Unmute after play starts
+            setTimeout(() => {
+              if (videoRef.current) {
+                videoRef.current.muted = false;
+              }
+            }, 1000);
+          }).catch(err => {
+            console.log('Autoplay failed:', err);
+          });
+        }
+      }, 2500);
     };
 
-    const handleError = (e) => {
-      console.error('Video error:', e);
-    };
-
-    video.addEventListener('canplay', handleCanPlay);
-    video.addEventListener('error', handleError);
-
-    return () => {
-      video.removeEventListener('canplay', handleCanPlay);
-      video.removeEventListener('error', handleError);
-    };
+    autoPlayVideo();
   }, []);
 
-  // Auto-play video after preloader finishes
-  useEffect(() => {
-    if (!isVideoReady) return;
-
-    const startAutoPlay = async () => {
-      try {
-        // Wait for preloader to finish (2.4 seconds total)
-        await new Promise(resolve => setTimeout(resolve, 2400));
-
-        if (!videoRef.current) return;
-
-        // Reset and start fresh
-        videoRef.current.currentTime = 0;
-        videoRef.current.muted = true;
-        videoRef.current.volume = 0;
-
-        // Try to play
-        const playPromise = videoRef.current.play();
-
-        if (playPromise !== undefined) {
-          playPromise
-            .then(() => {
-              console.log('Video autoplay successful');
-              // Wait a moment then unmute for audio
-              setTimeout(() => {
-                if (videoRef.current) {
-                  videoRef.current.muted = false;
-                  videoRef.current.volume = 1;
-                  console.log('Video unmuted - audio enabled');
-                }
-              }, 800);
-            })
-            .catch(error => {
-              console.error('Autoplay failed:', error);
-              // Retry once
-              setTimeout(() => {
-                if (videoRef.current && videoRef.current.paused) {
-                  videoRef.current.muted = true;
-                  videoRef.current.currentTime = 0;
-                  videoRef.current.play()
-                    .then(() => {
-                      setTimeout(() => {
-                        if (videoRef.current) {
-                          videoRef.current.muted = false;
-                          videoRef.current.volume = 1;
-                        }
-                      }, 800);
-                    })
-                    .catch(err => console.error('Retry failed:', err));
-                }
-              }, 1500);
-            });
-        }
-      } catch (err) {
-        console.error('Auto-play error:', err);
-      }
-    };
-
-    startAutoPlay();
-  }, [isVideoReady]);
-
-  // Handle scroll - pause when scrolling away, resume when scrolling back
+  // Handle scroll
   useEffect(() => {
     const handleScroll = () => {
       if (!sectionRef.current || !videoRef.current) return;
-
       const rect = sectionRef.current.getBoundingClientRect();
-      const isVisible = rect.top < window.innerHeight * 0.6 && rect.bottom > 0;
+      const isInView = rect.top < window.innerHeight && rect.bottom > 0;
 
-      if (isVisible && videoRef.current.paused) {
+      if (isInView && videoRef.current.paused) {
         videoRef.current.play().catch(() => {});
-      } else if (!isVisible && rect.top < -500 && !videoRef.current.paused) {
+      } else if (!isInView && !videoRef.current.paused) {
         videoRef.current.pause();
       }
     };
@@ -119,47 +58,23 @@ const Hero = () => {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  // Handle tab visibility
-  useEffect(() => {
-    const handleVisibilityChange = () => {
-      if (!videoRef.current) return;
-
-      if (document.hidden) {
-        videoRef.current.pause();
-      } else {
-        videoRef.current.play().catch(() => {});
-      }
-    };
-
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
-  }, []);
-
   return (
     <section 
       ref={sectionRef} 
       className="relative w-full h-screen overflow-hidden bg-black"
     >
-      {/* Background Video - Optimized for streaming */}
+      {/* Background Video - Direct source */}
       <video
         ref={videoRef}
         loop
+        autoPlay={false}
+        muted={true}
         playsInline
-        preload="metadata"
-        crossOrigin="anonymous"
+        preload="auto"
         className="absolute top-0 left-0 w-full h-full object-cover z-0"
-        style={{
-          WebkitPlaysinline: 'true',
-          WebkitUserSelect: 'none',
-          touchAction: 'none'
-        }}
       >
-        <source src={heroVideo} type="video/mp4" />
-        Your browser does not support the video tag.
+        <source src="/video/hero.mp4" type="video/mp4" />
       </video>
-
-      {/* Overlay to ensure content is visible */}
-      <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-transparent to-black/20 z-10"></div>
 
       {/* Content Container */}
       <div className="absolute inset-0 z-20 px-6 pb-20 md:pb-[8%] md:px-12 max-w-7xl mx-auto flex flex-col md:flex-row justify-end md:justify-between items-start md:items-end text-left w-full">
