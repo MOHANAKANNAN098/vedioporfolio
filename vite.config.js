@@ -6,7 +6,14 @@ export default defineConfig({
   plugins: [react(), tailwindcss()],
   build: {
     target: 'esnext',
-    sourcemap: false
+    sourcemap: false,
+    reportCompressedSize: false,
+    chunkSizeWarningLimit: 1000
+  },
+  server: {
+    mimeTypes: {
+      'video/mp4': ['mp4']
+    }
   },
   optimizeDeps: {
     include: ['react', 'react-dom', 'framer-motion', 'aos']

@@ -6,7 +6,7 @@ import heroVideo from '../assets/hero video/1000086985 (1).mp4';
 const Hero = () => {
   const videoRef = useRef(null);
   const sectionRef = useRef(null);
-  const [videoReady, setVideoReady] = useState(false);
+  const [isVideoReady, setIsVideoReady] = useState(false);
 
   useEffect(() => {
     AOS.init({
@@ -16,54 +16,64 @@ const Hero = () => {
     });
   }, []);
 
-  // Handle video loaded metadata
+  // Handle video metadata loaded
   useEffect(() => {
-    if (!videoRef.current) return;
+    const video = videoRef.current;
+    if (!video) return;
 
-    const handleLoadedMetadata = () => {
-      setVideoReady(true);
+    const handleCanPlay = () => {
+      setIsVideoReady(true);
+      console.log('Video ready to play');
     };
 
-    const video = videoRef.current;
-    video.addEventListener('loadedmetadata', handleLoadedMetadata);
+    const handleError = (e) => {
+      console.error('Video error:', e);
+    };
 
-    return () => video.removeEventListener('loadedmetadata', handleLoadedMetadata);
+    video.addEventListener('canplay', handleCanPlay);
+    video.addEventListener('error', handleError);
+
+    return () => {
+      video.removeEventListener('canplay', handleCanPlay);
+      video.removeEventListener('error', handleError);
+    };
   }, []);
 
-  // Automatic video playback after preloader
+  // Auto-play video after preloader finishes
   useEffect(() => {
-    if (!videoReady || !videoRef.current) return;
+    if (!isVideoReady) return;
 
-    const playVideo = async () => {
+    const startAutoPlay = async () => {
       try {
-        // Wait for preloader to finish
+        // Wait for preloader to finish (2.4 seconds total)
         await new Promise(resolve => setTimeout(resolve, 2400));
 
         if (!videoRef.current) return;
 
-        // Ensure video properties are set correctly
+        // Reset and start fresh
         videoRef.current.currentTime = 0;
         videoRef.current.muted = true;
         videoRef.current.volume = 0;
 
-        // Attempt to play
+        // Try to play
         const playPromise = videoRef.current.play();
 
         if (playPromise !== undefined) {
           playPromise
             .then(() => {
-              // Successfully playing - unmute after 500ms to ensure audio plays
+              console.log('Video autoplay successful');
+              // Wait a moment then unmute for audio
               setTimeout(() => {
                 if (videoRef.current) {
                   videoRef.current.muted = false;
                   videoRef.current.volume = 1;
-                  console.log('Video playing with audio');
+                  console.log('Video unmuted - audio enabled');
                 }
-              }, 500);
+              }, 800);
             })
             .catch(error => {
-              console.log('Autoplay failed:', error.message);
-              // Retry after a brief delay
+              console.error('Autoplay failed:', error);
+              // Retry once
               setTimeout(() => {
                 if (videoRef.current && videoRef.current.paused) {
                   videoRef.current.muted = true;
@@ -74,35 +84,33 @@ const Hero = () => {
                         if (videoRef.current) {
                           videoRef.current.muted = false;
                           videoRef.current.volume = 1;
-                          console.log('Video playing with audio (retry)');
                         }
-                      }, 500);
+                      }, 800);
                     })
-                    .catch(err => console.log('Retry failed:', err));
+                    .catch(err => console.error('Retry failed:', err));
                 }
-              }, 1000);
+              }, 1500);
             });
         }
       } catch (err) {
-        console.log('Error:', err);
+        console.error('Auto-play error:', err);
       }
     };
 
-    playVideo();
-  }, [videoReady]);
+    startAutoPlay();
+  }, [isVideoReady]);
 
-  // Handle scroll to pause/resume - only pause if scrolled far away
+  // Handle scroll - pause when scrolling away, resume when scrolling back
   useEffect(() => {
     const handleScroll = () => {
       if (!sectionRef.current || !videoRef.current) return;
 
       const rect = sectionRef.current.getBoundingClientRect();
-      const isInView = rect.top < window.innerHeight * 0.5 && rect.bottom > 0;
+      const isVisible = rect.top < window.innerHeight * 0.6 && rect.bottom > 0;
 
-      if (isInView && videoRef.current.paused) {
+      if (isVisible && videoRef.current.paused) {
         videoRef.current.play().catch(() => {});
-      } else if (!isInView && rect.top < -300 && !videoRef.current.paused) {
-        // Only pause if scrolled more than 300px past the section
+      } else if (!isVisible && rect.top < -500 && !videoRef.current.paused) {
         videoRef.current.pause();
       }
     };
@@ -111,7 +119,7 @@ const Hero = () => {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  // Handle page visibility
+  // Handle tab visibility
   useEffect(() => {
     const handleVisibilityChange = () => {
       if (!videoRef.current) return;
@@ -132,21 +140,26 @@ const Hero = () => {
       ref={sectionRef} 
       className="relative w-full h-screen overflow-hidden bg-black"
     >
-      {/* Background Video with all autoplay attributes */}
+      {/* Background Video - Optimized for streaming */}
       <video
         ref={videoRef}
         loop
-        autoPlay
-        muted
         playsInline
-        webkit-playsinline="true"
-        x5-playsinline="true"
-        preload="auto"
+        preload="metadata"
         crossOrigin="anonymous"
         className="absolute top-0 left-0 w-full h-full object-cover z-0"
+        style={{
+          WebkitPlaysinline: 'true',
+          WebkitUserSelect: 'none',
+          touchAction: 'none'
+        }}
       >
         <source src={heroVideo} type="video/mp4" />
+        Your browser does not support the video tag.
       </video>
+
+      {/* Overlay to ensure content is visible */}
+      <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-transparent to-black/20 z-10"></div>
 
       {/* Content Container */}
       <div className="absolute inset-0 z-20 px-6 pb-20 md:pb-[8%] md:px-12 max-w-7xl mx-auto flex flex-col md:flex-row justify-end md:justify-between items-start md:items-end text-left w-full">
@@ -156,7 +169,7 @@ const Hero = () => {
           {/* Main Heading */}
           <h1 
             data-aos="fade-up"
-            className="text-white text-3xl md:text-5xl font-bold mb-4 tracking-tight"
+            className="text-white text-3xl md:text-5xl font-bold mb-4 tracking-tight drop-shadow-lg"
           >
             I am the Founder of <br /> <span className="text-transparent [-webkit-text-stroke:1.5px_black]">Samkass & Full Stack Developer</span>
           </h1>
@@ -165,7 +178,7 @@ const Hero = () => {
           <p 
             data-aos="fade-up"
             data-aos-delay="200"
-            className="text-white text-sm md:text-lg font-semibold mb-8 max-w-md drop-shadow-md"
+            className="text-white text-sm md:text-lg font-semibold mb-8 max-w-md drop-shadow-lg"
           >
             Building practical SaaS solutions, web applications, and browser games. Experienced in React, Node.js, AI tools, and cloud technologies.
           </p>
